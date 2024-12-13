@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 )
@@ -17,10 +18,10 @@ type point struct {
 
 func main() {
 	puzzleMap := readInput()
+	// puzzleMap := testCases()
 	// fmt.Println(puzzleMap)
 	// fmt.Println(len(puzzleMap))
 	// return
-	// puzzleMap := testCases()
 	// puzzle := testCases()
 
 	fmt.Printf("answer is: %d\n", part1(puzzleMap))
@@ -28,47 +29,72 @@ func main() {
 }
 
 func part1(puzzleMap []string) int {
-	for i := range 75 {
-		puzzleMap = step(puzzleMap)
-		fmt.Printf("step: %d len()=%d\n", i, len(puzzleMap))
-	}
-	return len(puzzleMap)
+	return solveSlice(puzzleMap)
 }
 
-func applyRules(num string) []string {
-	if num == "0" {
-		return []string{"1"}
+var (
+	maxLevel = 75
+)
+
+func solveNum(num int, levels int, memo map[Key]int) int {
+	if levels == maxLevel {
+		return 1
 	}
-	if len(num)%2 == 0 {
-		right, _ := strconv.Atoi(num[:len(num)/2])
-		left, _ := strconv.Atoi(num[len(num)/2:])
-		return []string{strconv.Itoa(right), strconv.Itoa(left)}
+	key := Key{
+		Num:   num,
+		Level: levels,
 	}
 
-	numVal, _ := strconv.Atoi(num)
+	if prev := memo[key]; prev != 0 {
+		return prev
+	}
 
-	return []string{strconv.Itoa(numVal * 2024)}
+	var total int
+	if num == 0 {
+		total = solveNum(1, levels+1, memo)
+
+	} else if even, r, l := isEven(num); even {
+		ra := solveNum(r, levels+1, memo)
+		la := solveNum(l, levels+1, memo)
+		total = ra + la
+	} else {
+		total = solveNum(num*2024, levels+1, memo)
+	}
+
+	memo[key] = total
+
+	return total
 }
 
-func step(puzzleMap []string) []string {
+func isEven(num int) (bool, int, int) {
+	p := int(math.Log10(float64(num))) + 1
+	if p%2 == 0 { // this seems off by one
+		right := num % int(math.Pow10(p/2))
+		left := num / int(math.Pow10(p/2))
+		return true, right, left
+	}
+
+	return false, 0, 0
+}
+
+type Key struct {
+	Level int
+	Num   int
+}
+
+func solveSlice(puzzleMap []string) int {
+	memo := make(map[Key]int)
+	var count, levels int
 	for idx := 0; idx < len(puzzleMap); idx++ {
-		val := puzzleMap[idx]
-		newVals := applyRules(val)
-		if len(newVals) == 2 {
-			puzzleMap = append(puzzleMap[:idx+1], puzzleMap[idx:]...)
-			puzzleMap[idx] = newVals[0]
-			puzzleMap[idx+1] = newVals[1]
-			idx++
-			continue
-		}
-		puzzleMap[idx] = newVals[0]
-
+		// fmt.Printf("idx=%d, count=%d", idx, count)
+		val, _ := strconv.Atoi(puzzleMap[idx])
+		count += solveNum(val, levels, memo)
 	}
 
-	// fmt.Println("print step")
-	// fmt.Println(puzzleMap)
+	// fmt.Println(memo)
 
-	return puzzleMap
+	fmt.Println("answer: ", count)
+	return count
 }
 
 func part2(puzzleMap []string) int {
