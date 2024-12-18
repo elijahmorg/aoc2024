@@ -111,6 +111,9 @@ type PuzzlePlus struct {
 	Solution [][]Point
 }
 
+func printSolution() {
+}
+
 func solve(puzzle [][]rune, start, end Point) int {
 	var c Cursor
 	c.puzzle.p = puzzle
@@ -118,7 +121,9 @@ func solve(puzzle [][]rune, start, end Point) int {
 	c.puzzle.Size.x = len(puzzle[0])
 	c.p = start
 	c.d = E
-	var visited map[Point]bool = make(map[Point]bool)
+	// need a third dimension for visited, because direction is part of this
+	var visited map[Point][4]bool = make(map[Point][4]bool)
+
 	var dist map[Point]DistPoint = make(map[Point]DistPoint)
 
 	// var parent map[Point]Point = make(map[Point]Point) // map[Point]parentPoint
@@ -131,12 +136,14 @@ func solve(puzzle [][]rune, start, end Point) int {
 	for range sm {
 		u := getMinDistance(visited, dist)
 
-		visited[u] = true
 		c.p = u
 		c.d = dist[u].d
+		v := visited[u]
+		v[c.d] = true
+		visited[u] = v
 
 		for _, edge := range c.Edges() {
-			if ok := visited[edge.P]; !ok {
+			if b, ok := visited[edge.P]; !ok || !b[edge.d] {
 				cd := dist[u]
 				cde, found := dist[edge.P]
 				if !found {
@@ -161,11 +168,11 @@ func solve(puzzle [][]rune, start, end Point) int {
 	return dist[end].Dist
 }
 
-func getMinDistance(visited map[Point]bool, dist map[Point]DistPoint) Point {
+func getMinDistance(visited map[Point][4]bool, dist map[Point]DistPoint) Point {
 	min := math.MaxInt
 	p := Point{}
 	for k, v := range dist {
-		if visit, ok := visited[k]; ok && visit {
+		if visit, ok := visited[k]; ok && visit[v.d] {
 			continue
 		}
 		if v.Dist < min {
