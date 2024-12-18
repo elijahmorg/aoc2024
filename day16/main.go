@@ -80,22 +80,23 @@ func testCases() [][]rune {
 	// #.###.#.#.#.#.#
 	// #S..#.....#...#
 	// ###############`
-	test := `#################
-#...#...#...#..E#
-#.#.#.#.#.#.#.#.#
-#.#.#.#...#...#.#
-#.#.#.#.###.#.#.#
-#...#.#.#.....#.#
-#.#.#.#.#.#####.#
-#.#...#.#.#.....#
-#.#.#####.#.###.#
-#.#.#.......#...#
-#.#.###.#####.###
-#.#.#...#.....#.#
-#.#.#.#####.###.#
-#.#.#.........#.#
-#.#.#.#########.#
-#S#.............#
+	test := `
+#################
+#..............E#
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#.###############
+#S###############
 #################`
 
 	parts := strings.Split(string(test), "\n")
@@ -122,7 +123,7 @@ func solve(puzzle [][]rune, start, end Point) int {
 	c.p = start
 	c.d = E
 	// need a third dimension for visited, because direction is part of this
-	var visited map[Point][4]bool = make(map[Point][4]bool)
+	var visited map[Point]bool = make(map[Point]bool)
 
 	var dist map[Point]DistPoint = make(map[Point]DistPoint)
 
@@ -138,26 +139,22 @@ func solve(puzzle [][]rune, start, end Point) int {
 
 		c.p = u
 		c.d = dist[u].d
-		v := visited[u]
-		v[c.d] = true
-		visited[u] = v
+		visited[u] = true
 
 		for _, edge := range c.Edges() {
-			if b, ok := visited[edge.P]; !ok || !b[edge.d] {
+			if ok := visited[edge.P]; !ok {
 				cd := dist[u]
 				cde, found := dist[edge.P]
 				if !found {
 					// no cost our cost is lower
 					cd.d = edge.d
-					cd.x = edge.P.x
-					cd.y = edge.P.y
+					cd.Point = edge.P
 					cd.Dist = cd.Dist + edge.Cost
 					dist[edge.P] = cd
 					continue
 				} else if cd.Dist+edge.Cost < cde.Dist {
 					cd.d = edge.d
-					cd.x = edge.P.x
-					cd.y = edge.P.y
+					cd.Point = edge.P
 					cd.Dist = cd.Dist + edge.Cost
 					dist[edge.P] = cd
 				}
@@ -165,14 +162,41 @@ func solve(puzzle [][]rune, start, end Point) int {
 		}
 	}
 
-	return dist[end].Dist
+	// PrintDistMap(dist, c.puzzle.Size, c.puzzle.p)
+	min := math.MaxInt
+	for k := range W {
+		p := end
+		p.d = k
+		if val, ok := dist[p]; ok && val.Dist < min {
+			min = val.Dist
+		}
+	}
+
+	return min
 }
 
-func getMinDistance(visited map[Point][4]bool, dist map[Point]DistPoint) Point {
+func PrintDistMap(dist map[Point]DistPoint, size Point, puzzle [][]rune) {
+	for y := range size.y {
+		for x := range size.x {
+			p := Point{y: y, x: x}
+			if dist[p].Dist == 0 {
+				if puzzle[y][x] == '.' {
+					fmt.Printf("000000")
+				}
+				fmt.Printf("077777 ")
+			} else {
+				fmt.Printf("%06d ", dist[p].Dist)
+			}
+		}
+		fmt.Printf("\n")
+	}
+}
+
+func getMinDistance(visited map[Point]bool, dist map[Point]DistPoint) Point {
 	min := math.MaxInt
 	p := Point{}
 	for k, v := range dist {
-		if visit, ok := visited[k]; ok && visit[v.d] {
+		if visit, ok := visited[k]; ok && visit {
 			continue
 		}
 		if v.Dist < min {
@@ -198,7 +222,6 @@ func (c *Cursor) Edges() []Edge {
 		var edge Edge
 		if v != nil {
 			char := c.puzzle.p[v.y][v.x]
-			// if valid move
 			if char == '#' {
 				continue
 			}
@@ -206,6 +229,7 @@ func (c *Cursor) Edges() []Edge {
 				edge.Cost = 1
 				edge.d = k
 				edge.P = *v
+				edge.P.d = k
 				edges = append(edges, edge)
 			} else if k == c.d+2%4 {
 				// behind us
@@ -214,6 +238,7 @@ func (c *Cursor) Edges() []Edge {
 				edge.Cost = 1001
 				edge.d = k
 				edge.P = *v
+				edge.P.d = k
 				edges = append(edges, edge)
 			}
 		}
@@ -292,6 +317,7 @@ type DistPoint struct {
 type Point struct {
 	x int
 	y int
+	d int
 }
 
 type Puzzle struct {
